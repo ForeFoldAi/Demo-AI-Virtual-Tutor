@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { mockAPI, USE_MOCK_API } from "@/lib/mock-api";
+// No API calls - UI only mode
 
 interface Message {
   id: string;
@@ -125,114 +125,25 @@ export default function AITutorPage() {
     setActiveConversation(conversationWithAssistant);
 
     try {
+      // No API calls - simulate response for UI display only
+      const mockResponse = `That's a great question! Let me explain this concept step by step.\n\nBased on your question about "${content.slice(0, 50)}...", here's a detailed explanation:\n\nThis topic involves several key concepts that work together. First, let's understand the fundamental principles. Then we can explore how these principles apply in different scenarios.\n\nKey points to remember:\n• Understanding the basics is crucial\n• Practice helps reinforce learning\n• Real-world applications make concepts clearer\n\nWould you like me to elaborate on any specific aspect of this topic?`;
+      
+      // Simulate streaming effect without any API call
       let fullContent = "";
-
-      if (USE_MOCK_API) {
-        // Use mock API for demo mode
-        const stream = await mockAPI.chat(
-          content,
-          conversation.id,
-          updatedConversation.messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          }))
-        );
-
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const text = decoder.decode(value);
-          const lines = text.split("\n");
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.content) {
-                  fullContent += data.content;
-                  setActiveConversation((prev) => {
-                    if (!prev) return prev;
-                    const messages = [...prev.messages];
-                    messages[messages.length - 1] = {
-                      ...messages[messages.length - 1],
-                      content: fullContent,
-                    };
-                    return { ...prev, messages };
-                  });
-                }
-              } catch (e) {
-                // Ignore parse errors
-              }
-            }
-          }
-        }
-      } else {
-        // Original API call (not used in demo mode)
-        const token = localStorage.getItem("auth-storage");
-        let authToken = "";
-        try {
-          if (token) {
-            const parsed = JSON.parse(token);
-            authToken = parsed?.state?.token || "";
-          }
-        } catch {}
-
-        const response = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-          },
-          body: JSON.stringify({
-            message: content,
-            conversationId: conversation.id,
-            history: updatedConversation.messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-          }),
+      const words = mockResponse.split(" ");
+      
+      for (let i = 0; i < words.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 30)); // Small delay for visual effect
+        fullContent += words[i] + (i < words.length - 1 ? " " : "");
+        setActiveConversation((prev) => {
+          if (!prev) return prev;
+          const messages = [...prev.messages];
+          messages[messages.length - 1] = {
+            ...messages[messages.length - 1],
+            content: fullContent,
+          };
+          return { ...prev, messages };
         });
-
-        if (!response.ok) throw new Error("Failed to get response");
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const text = decoder.decode(value);
-            const lines = text.split("\n");
-
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                try {
-                  const data = JSON.parse(line.slice(6));
-                  if (data.content) {
-                    fullContent += data.content;
-                    setActiveConversation((prev) => {
-                      if (!prev) return prev;
-                      const messages = [...prev.messages];
-                      messages[messages.length - 1] = {
-                        ...messages[messages.length - 1],
-                        content: fullContent,
-                      };
-                      return { ...prev, messages };
-                    });
-                  }
-                } catch (e) {
-                  // Ignore parse errors
-                }
-              }
-            }
-          }
-        }
       }
 
       setConversations((prev) =>
